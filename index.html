@@ -159,23 +159,23 @@
     <table class="meta-table mb-4">
       <tr>
         <th>学校名 / 住所 / 電話</th>
-        <td id="printSchoolInfo" class="text-sm font-bold"></td>
+        <td id="printSchoolInfo" class="text-sm font-bold whitespace-pre-wrap"></td>
       </tr>
       <tr>
         <th>発生 / 終了 / 経過</th>
         <td id="printIncidentInfo" class="text-sm font-bold"></td>
       </tr>
       <tr>
-        <th>傷病者（氏名 / 学年 / 性別 / 年齢）</th>
+        <th>傷病者<br>（氏名 / 学年 / 性別 / 年齢）</th>
         <td id="printPatientInfo" class="text-sm font-bold"></td>
       </tr>
       <tr>
         <th>現在の主な症状・既往歴・アレルギー</th>
-        <td id="printMedicalInfo" class="text-sm"></td>
+        <td id="printMedicalInfo" class="text-sm whitespace-pre-wrap"></td>
       </tr>
       <tr>
         <th>初動チェック状況</th>
-        <td id="printChecklist" class="text-sm"></td>
+        <td id="printChecklist" class="text-sm whitespace-pre-wrap"></td>
       </tr>
     </table>
 
@@ -1282,6 +1282,8 @@ function buildScript(){
     pGrade: gradeStr,
     pSex: val("pSex") || "（性別不明）",
     symptom: val("symptom") || "（症状不明）",
+    history: val("pHistory") || "（未入力）",
+    allergy: val("pAllergy") || "（未入力）",
     age: ageStr
   };
 
@@ -1296,8 +1298,8 @@ function buildScript(){
 
 対象：${data.pName}さん（${data.pGrade}・${data.pSex}${data.age ? "・" + data.age : ""}）
 症状：${data.symptom}
-
-正門にて誘導待機中です。`;
+既往歴：${data.history}
+アレルギー：${data.allergy}`;
 }
 
 /* ===================== logging ===================== */
@@ -1876,7 +1878,10 @@ function handleLvAction(ev){
 
 /* ===================== report build (print + word) ===================== */
 function buildReportData(){
-  const schoolLine = `${val("schoolName") || "未設定"} / ${val("schoolAddr") || "住所未設定"} / ${val("schoolPhone") || "電話未設定"}`;
+  const schoolName = val("schoolName") || "未設定";
+  const schoolAddr = val("schoolAddr") || "住所未設定";
+  const schoolPhone = val("schoolPhone") || "電話未設定";
+  const schoolLine = `${schoolName}\n${schoolAddr}\n${schoolPhone}`;
 
   const start = incident.startTs ? fmtDateTime(incident.startTs) : "未記録";
   const end   = incident.endTs ? fmtDateTime(incident.endTs) : (incident.active ? "継続中" : "未記録");
@@ -1888,9 +1893,10 @@ function buildReportData(){
   const gradeStr = String(gradeVal).match(/^\d$/) ? `${gradeVal}年` : gradeVal;
   const patientLine = `${val("pName") || "氏名未詳"} / ${gradeStr} / ${val("pSex") || "-"} / ${incident.computedAgeStr || "--"}歳`;
 
-  let medInfo = `【症状】${val("symptom") || "未入力"}`;
-  if(val("pHistory")) medInfo += `  【既往】${val("pHistory")}`;
-  if(val("pAllergy")) medInfo += `  【アレルギー】${val("pAllergy")}`;
+  const medSym = val("symptom") || "未入力";
+  const medHis = val("pHistory") || "未入力";
+  const medAll = val("pAllergy") || "未入力";
+  const medInfo = `現在の主な症状：${medSym}\n既往歴：${medHis}\nアレルギー：${medAll}`;
 
   const items = checklistItems();
   const ok = items.filter(x=>incident.checklist[x]);
@@ -1922,8 +1928,9 @@ function buildWordHtml(data){
     `).join("")
     : `<tr><td colspan="2" style="padding:12px;color:#666;">記録はありません</td></tr>`;
 
-  const checklistOk = escapeHtml(data.checklistOk.length ? data.checklistOk.join(" / ") : "なし");
-  const checklistNg = escapeHtml(data.checklistNg.length ? data.checklistNg.join(" / ") : "なし");
+  const schoolHtml = escapeHtml(data.schoolLine).replaceAll("\n","<br>");
+  const medHtml = escapeHtml(data.medInfo).replaceAll("\n","<br>");
+  const checklistOkLines = data.checklistOk.length ? data.checklistOk.map(x=>escapeHtml(x)).join("<br>") : "（完了なし）";
 
   return `
 <html>
@@ -1945,11 +1952,11 @@ function buildWordHtml(data){
   <div class="sub">作成日：${escapeHtml(data.created)}</div>
 
   <table class="meta" style="margin-bottom:10pt;">
-    <tr><th>学校名 / 住所 / 電話</th><td>${escapeHtml(data.schoolLine)}</td></tr>
+    <tr><th>学校名 / 住所 / 電話</th><td>${schoolHtml}</td></tr>
     <tr><th>発生 / 終了 / 経過</th><td>${escapeHtml(data.incidentLine)}</td></tr>
-    <tr><th>傷病者（氏名 / 学年 / 性別 / 年齢）</th><td>${escapeHtml(data.patientLine)}</td></tr>
-    <tr><th>現在の主な症状・既往歴・アレルギー</th><td style="white-space:pre-wrap;">${escapeHtml(data.medInfo)}</td></tr>
-    <tr><th>初動チェック状況</th><td><b>完了：</b>${checklistOk}<br><b>未：</b>${checklistNg}</td></tr>
+    <tr><th>傷病者<br>（氏名 / 学年 / 性別 / 年齢）</th><td>${escapeHtml(data.patientLine)}</td></tr>
+    <tr><th>現在の主な症状・既往歴・アレルギー</th><td>${medHtml}</td></tr>
+    <tr><th>初動チェック状況</th><td>${checklistOkLines}</td></tr>
   </table>
 
   <h2 style="font-size:14pt;border-left:4px solid #000;padding-left:6pt;margin:0 0 6pt 0;">時系列記録</h2>
@@ -1973,16 +1980,9 @@ $("btnPrint").onclick = ()=>{
   setText("printPatientInfo", d.patientLine);
   setText("printMedicalInfo", d.medInfo);
 
-  const items = checklistItems();
   const chk = $("printChecklist");
   if(chk){
-    if(items.length===0){
-      chk.innerText = "（未設定）";
-    }else{
-      chk.innerHTML =
-        `<div><b>完了：</b>${escapeHtml(d.checklistOk.length ? d.checklistOk.join(" / ") : "なし")}</div>` +
-        `<div><b>未：</b>${escapeHtml(d.checklistNg.length ? d.checklistNg.join(" / ") : "なし")}</div>`;
-    }
+    chk.textContent = d.checklistOk.length ? d.checklistOk.join("\n") : "（完了なし）";
   }
 
   const table = $("printTimeline");
