@@ -126,6 +126,12 @@
       font-weight: 800;
     }
 
+    /* v18 layout: 初動チェック（完了/未を2カラム表示） */
+    .check-split{ display:flex; gap:12px; }
+    .check-col{ flex:1; min-width:0; }
+    .check-title{ font-weight:800; margin-bottom:4px; }
+    .check-list{ white-space:pre-wrap; }
+
     @media print{
       @page{ size: A4; margin: 12mm; }
       .no-print{ display:none !important; }
@@ -175,7 +181,18 @@
       </tr>
       <tr>
         <th>初動チェック状況</th>
-        <td id="printChecklist" class="text-sm whitespace-pre-wrap"></td>
+        <td class="text-sm">
+          <div class="check-split">
+            <div class="check-col">
+              <div class="check-title">完了</div>
+              <div id="printChecklistOk" class="check-list"></div>
+            </div>
+            <div class="check-col">
+              <div class="check-title">未</div>
+              <div id="printChecklistNg" class="check-list"></div>
+            </div>
+          </div>
+        </td>
       </tr>
     </table>
 
@@ -1930,7 +1947,22 @@ function buildWordHtml(data){
 
   const schoolHtml = escapeHtml(data.schoolLine).replaceAll("\n","<br>");
   const medHtml = escapeHtml(data.medInfo).replaceAll("\n","<br>");
-  const checklistOkLines = data.checklistOk.length ? data.checklistOk.map(x=>escapeHtml(x)).join("<br>") : "（完了なし）";
+
+  const checklistOkLines = data.checklistOk.length ? data.checklistOk.map(x=>escapeHtml(x)).join("<br>") : "（なし）";
+  const checklistNgLines = data.checklistNg.length ? data.checklistNg.map(x=>escapeHtml(x)).join("<br>") : "（なし）";
+
+  const checklistSplitHtml = `
+    <table class="chk">
+      <tr>
+        <th>完了</th>
+        <th>未</th>
+      </tr>
+      <tr>
+        <td>${checklistOkLines}</td>
+        <td>${checklistNgLines}</td>
+      </tr>
+    </table>
+  `;
 
   return `
 <html>
@@ -1945,6 +1977,9 @@ function buildWordHtml(data){
   .meta th, .meta td{ border:1px solid #000; padding:8pt; vertical-align:top; }
   .meta th{ width:150pt; background:#f3f4f6; font-weight:700; }
   .timeline th{ border-bottom:2px solid #000; padding:8pt; text-align:left; background:#f8fafc; }
+  .chk{ width:100%; border-collapse:collapse; }
+  .chk th, .chk td{ border:1px solid #000; padding:6pt; vertical-align:top; }
+  .chk th{ background:#f8fafc; font-weight:700; width:50%; }
 </style>
 </head>
 <body>
@@ -1956,7 +1991,7 @@ function buildWordHtml(data){
     <tr><th>発生 / 終了 / 経過</th><td>${escapeHtml(data.incidentLine)}</td></tr>
     <tr><th>傷病者<br>（氏名 / 学年 / 性別 / 年齢）</th><td>${escapeHtml(data.patientLine)}</td></tr>
     <tr><th>現在の主な症状・既往歴・アレルギー</th><td>${medHtml}</td></tr>
-    <tr><th>初動チェック状況</th><td>${checklistOkLines}</td></tr>
+    <tr><th>初動チェック状況</th><td>${checklistSplitHtml}</td></tr>
   </table>
 
   <h2 style="font-size:14pt;border-left:4px solid #000;padding-left:6pt;margin:0 0 6pt 0;">時系列記録</h2>
@@ -1980,10 +2015,10 @@ $("btnPrint").onclick = ()=>{
   setText("printPatientInfo", d.patientLine);
   setText("printMedicalInfo", d.medInfo);
 
-  const chk = $("printChecklist");
-  if(chk){
-    chk.textContent = d.checklistOk.length ? d.checklistOk.join("\n") : "（完了なし）";
-  }
+  const okEl = $("printChecklistOk");
+  const ngEl = $("printChecklistNg");
+  if(okEl) okEl.textContent = d.checklistOk.length ? d.checklistOk.join("\n") : "（なし）";
+  if(ngEl) ngEl.textContent = d.checklistNg.length ? d.checklistNg.join("\n") : "（なし）";
 
   const table = $("printTimeline");
   if(table){
