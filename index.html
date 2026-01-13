@@ -286,11 +286,6 @@
               </div>
             </div>
 
- <div class="text-[11px] font-bold text-slate-500">
-              例：<span class="font-black">意識あり|意識あり（明瞭）</span>（表示＝左、記録＝右）
-            </div>
-          </div>
-            
             <div class="space-y-2">
               <div class="text-xs font-black text-slate-800">SYMPTOMS / 全身症状</div>
               <div class="grid grid-cols-1 gap-2">
@@ -311,11 +306,6 @@
               </div>
             </div>
 
- <div class="text-[11px] font-bold text-slate-500">
-              例：<span class="font-black">意識あり|意識あり（明瞭）</span>（表示＝左、記録＝右）
-            </div>
-          </div>
-            
             <div class="space-y-2">
               <div class="text-xs font-black text-green-700">TREATMENT / 処置内容</div>
               <div class="grid grid-cols-1 gap-2">
@@ -1561,7 +1551,7 @@ function voiceSupportedHint(){
   if(SpeechRecognition && isSecure() && !isIOS()){
     el.textContent = "✅ 音声入力ができない場合は下の「キーボードのマイク」から";
   }else{
-    el.textContent = "✅ 音声入力ができない場合は下の「キーボードのマイク」から";
+    el.textContent = "※ うまく動かない場合は下の「キーボードのマイク」で入力";
   }
 }
 
@@ -2242,3 +2232,4 @@ window.restoreViewState?.();
 </script>
 </body>
 </html>
+
