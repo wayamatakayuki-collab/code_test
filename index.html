@@ -2086,7 +2086,7 @@ $("btnResetAll").onclick = ()=>{
     form:{ place:"", pName:"", pGrade:"", pSex:"", pBirth:"", symptom:"", pHistory:"", pAllergy:"" },
     computedAgeStr:"--"
   };
-  saveIncident();
+  localStorage.setItem(INCIDENT_KEY_V18, JSON.stringify(incident));
   loadIncident();
   stopIncidentTimer();
   if(!$("logViewerWrap")?.classList.contains("hidden")) renderLogViewer();
