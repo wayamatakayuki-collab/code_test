@@ -1,11 +1,3 @@
-下記のコードに下記の修正を差し替えたv25を作成してください。 
-また，下記の内容以外は変更しないでください。 
-
-【修正内容】
-・「発生〜引継ぎまで「全部ここに」残す」という言葉を消して，ここに最新のLOGが反映されるようにしてほしい。
-・メモ（音声入力）だが，緊急時に読んでられないため周りの説明をすっきりさせてください。
-
-【コード】
 <!DOCTYPE html>
 <html lang="ja">
 <head>
@@ -443,7 +435,8 @@
         <div class="flex items-center justify-between gap-2">
           <div>
             <div class="font-black text-sm">経過・処置の記録</div>
-            <div class="text-[10px] font-black text-slate-500">発生〜引継ぎまで「全部ここに」残す</div>
+            <!-- ✅ v25: 文言を削除し、ここに最新LOGを表示 -->
+            <div id="latestLogPreview" class="text-[10px] font-black text-slate-500 leading-snug">最新LOG：（記録なし）</div>
           </div>
 
           <div class="flex items-center gap-2">
@@ -495,9 +488,9 @@
         <div class="flex items-center justify-between">
           <div>
             <div class="font-black text-sm">メモ（音声入力）</div>
+            <!-- ✅ v25: 説明をすっきり -->
             <div class="text-[10px] font-black text-slate-500">
-              対応端末：ボタンでリアルタイム文字起こし → 「記録」でログ化<br>
-              iPhone等未対応：<span class="text-slate-900 font-black">キーボードのマイク（音声入力）</span>を使用
+              音声が動かない場合は、下の「キーボードのマイク」で入力してください
             </div>
           </div>
 
@@ -1274,6 +1267,7 @@ function renderTimeline(){
   if(entries.length===0){
     empty.classList.remove("hidden");
     wrap.appendChild(empty);
+    updateIncidentBar();
     return;
   }
   empty.classList.add("hidden");
@@ -1292,14 +1286,35 @@ function renderTimeline(){
     `;
     wrap.appendChild(div);
   });
+
+  updateIncidentBar();
 }
 
 /* ===================== incident bar ===================== */
 let incidentTimer = null;
+
+/* ✅ v25: 最新LOG表示（ここに反映） */
+function updateLatestLogPreview(){
+  const el = $("latestLogPreview");
+  if(!el) return;
+  const entries = Array.isArray(incident.entries) ? incident.entries : [];
+  if(entries.length===0){
+    el.textContent = "最新LOG：（記録なし）";
+    return;
+  }
+  const last = entries[entries.length - 1];
+  const raw = String(last.text || "").replace(/\s+/g, " ").trim();
+  const short = raw.length > 40 ? (raw.slice(0, 40) + "…") : raw;
+  el.textContent = `最新LOG：${last.time} ${short || "（内容なし）"}`;
+}
+
 function updateIncidentBar(){
   setText("incidentStartLabel", incident.startTs ? fmtDateTime(incident.startTs).split(" ").slice(-1)[0] : "--:--");
   const entries = Array.isArray(incident.entries) ? incident.entries : [];
   setText("lastEntryLabel", entries.length ? entries[entries.length-1].time : "--:--");
+
+  /* ✅ v25 */
+  updateLatestLogPreview();
 
   if(incident.active && incident.startTs){
     setText("incidentElapsedLabel", msToElapsed(Date.now() - incident.startTs));
@@ -1480,20 +1495,18 @@ function isIOS(){
 function isSecure(){
   return window.isSecureContext || location.protocol === "https:" || location.hostname === "localhost";
 }
+
+/* ✅ v25: 説明を簡潔化 */
 function voiceSupportedHint(){
-  const parts = [];
-  if(!isSecure()){
-    parts.push("⚠️ 音声入力はHTTPS環境でないと動かない場合があります（file://は不可のことが多い）");
-  }
-  if(!SpeechRecognition){
-    parts.push("iPhone等はブラウザの音声認識が未対応のことがあります。下の「キーボードのマイク」で入力してください。");
-  }else if(isIOS()){
-    parts.push("iPhoneはブラウザ音声認識が不安定/未対応のことがあります。動かない場合は下の「キーボードのマイク」で入力してください。");
+  const el = $("voiceSupportHint");
+  if(!el) return;
+  if(SpeechRecognition && isSecure() && !isIOS()){
+    el.textContent = "✅ 音声ボタンで入力可（うまく動かない場合は下の「キーボードのマイク」）";
   }else{
-    parts.push("Android/PC（対応ブラウザ）では、RECでリアルタイム文字起こしします。");
+    el.textContent = "※ うまく動かない場合は下の「キーボードのマイク」で入力";
   }
-  if($("voiceSupportHint")) $("voiceSupportHint").textContent = parts.join(" / ");
 }
+
 function setupRecognition(){
   if(!SpeechRecognition) return;
   try{
@@ -1572,7 +1585,7 @@ function focusForKeyboardDictation(){
     setTimeout(()=>{ try{ area.classList.remove("ring-2","ring-amber-400"); }catch(e){} }, 1200);
   }
   if($("voiceSupportHint")){
-    $("voiceSupportHint").textContent = "✅ iPhone等：入力欄をタップ → キーボードのマイク（音声入力）で入力してください。";
+    $("voiceSupportHint").textContent = "👇 キーボードのマイクで入力";
   }
   if($("interimText")) $("interimText").innerText = "👇 キーボードのマイクで入力";
 }
@@ -1912,7 +1925,7 @@ $("btnWord").onclick = ()=>{
   const d = buildReportData();
   const html = buildWordHtml(d);
   const content = "\ufeff" + html;
-  downloadFile(`救急搬送_経過記録_${ymd_hm()}.doc`, content, "application/msword");
+  downloadFile(`救急搬送_経経過記録_${ymd_hm()}.doc`, content, "application/msword");
   alert("Wordファイル（.doc）を保存しました。\n（Wordで開けます）");
 };
 
