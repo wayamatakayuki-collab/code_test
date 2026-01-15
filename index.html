@@ -2198,7 +2198,7 @@ $("lvAddDo").onclick = ()=>{
 $("btnExportCSV").onclick = ()=>{
   saveSettings();
   const csv = settingsToCSV();
-  downloadFile(`救急要請サポート_設定_${ymd_hm()}.csv`, csv, "text/csv;charset=utf-8");
+  downloadFile(`救急対応サポート_設定_${ymd_hm()}.csv`, csv, "text/csv;charset=utf-8");
   alert("設定CSVを保存しました。");
 };
 $("btnImportCSV").onclick = ()=> $("csvFile")?.click();
