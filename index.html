@@ -2124,8 +2124,8 @@ $("btnExportSettings").onclick = async ()=>{
     quickSymptoms: settings.quickSymptoms || [],
     quickTreatment: settings.quickTreatment || []
   };
-  const txt = `【救急要請サポート 設定（v18）】\n` + JSON.stringify(pack, null, 2);
-  await shareText("救急要請サポート 設定（v18）", txt);
+  const txt = `【救急対応サポート 設定】\n` + JSON.stringify(pack, null, 2);
+  await shareText("救急対応サポート 設定", txt);
 };
 
 $("btnRestoreDefaultCases").onclick = ()=>{ document.querySelectorAll(".casePreset").forEach((inp,idx)=> inp.value = DEFAULT_CASES[idx] || ""); previewPresetChanges(); };
