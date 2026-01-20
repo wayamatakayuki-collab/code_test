@@ -294,8 +294,8 @@ const { useEffect, useMemo, useRef, useState } = React;
       try{
         const raw = localStorage.getItem(LAST_REV_KEY);
         if(raw == null || raw === "") return null;
-        const n = Number(raw);
-        return (Number.isFinite(n) ? n : null);
+        // 差分判定用トークン（文字列）をそのまま利用
+        return String(raw);
       }catch(e){ return null; }
     }
     function saveLastRevLocal(v){
@@ -857,29 +857,71 @@ const { useEffect, useMemo, useRef, useState } = React;
         if(!authReady) return false;
         if(busy || monthBusy || yearBusy || importBusy) return false;
         try{
-          const revRef = db.collection('meta').doc('revision');
-          const snap = await revRef.get();
-          // 差分判定用の1ドキュメント取得はread概算に加算しない
           setLastCheckAt(Date.now());
 
-          const rev = snap.exists ? Number((snap.data()||{}).rev || 0) : 0;
-          const updatedAt = snap.exists ? (snap.data()||{}).updatedAt : null;
-          const updatedMs = (updatedAt && typeof updatedAt.toMillis === 'function') ? updatedAt.toMillis() : null;
+          async function probeLatestUpdatedMs(col){
+            const qs = await db.collection(col).orderBy('updatedAt','desc').limit(1).get();
+            if(qs.empty) return 0;
+            const d = qs.docs[0].data() || {};
+            const u = d.updatedAt;
+            const ms = (u && typeof u.toMillis === 'function') ? u.toMillis() : (typeof u === 'number' ? u : 0);
+            return Number(ms || 0);
+          }
 
-          const prev = (lastRevRef.current == null) ? null : Number(lastRevRef.current||0);
+          let token = null;
+          let changeMs = null;
 
-          // 初回は「差分判定の基準を設定するだけ」（取得しない）
+          // まずは meta/revision を試す（最小の差分判定）
+          try{
+            const snap = await db.collection('meta').doc('revision').get();
+            const rev = snap.exists ? Number((snap.data()||{}).rev || 0) : 0;
+            const updatedAt = snap.exists ? (snap.data()||{}).updatedAt : null;
+            const updatedMs = (updatedAt && typeof updatedAt.toMillis === 'function') ? updatedAt.toMillis() : null;
+            token = `rev:${rev}`;
+            changeMs = updatedMs || null;
+          }catch(e){
+            // meta が読めない場合は、読めるコレクションの最新更新時刻で差分判定
+            const rMs = await probeLatestUpdatedMs('reservations');
+            const roomsMs = await probeLatestUpdatedMs('rooms');
+            const eqMs = await probeLatestUpdatedMs('equipments');
+            token = `probe:${rMs}:${roomsMs}:${eqMs}`;
+            changeMs = Math.max(Number(rMs||0), Number(roomsMs||0), Number(eqMs||0));
+          }
+
+          const prev = (lastRevRef.current == null) ? null : String(lastRevRef.current);
+
+          async function refreshByScope(){
+            if(scope === 'all'){
+              await refreshAllSilent();
+            }else if(scope === 'masters'){
+              await refreshMasters({ silent:true });
+            }else if(scope === 'monitor'){
+              await refreshMonitor(monitorDate, { silent:true });
+            }else if(scope === 'week'){
+              await refreshWeek(weekStart, { silent:true });
+            }else if(scope === 'month'){
+              await refreshMonth(monthCursor, { silent:true });
+            }else if(scope === 'year'){
+              await refreshYear({ silent:true });
+            }else{
+              await refreshDay(selectedDate, { silent:true });
+            }
+          }
+
+          // 初回：自動更新は基準設定のみ。手動更新は実取得する。
           if(prev == null){
-            setLastRev(rev);
-            if(updatedMs) setLastChangeAt(updatedMs);
+            setLastRev(token);
+            if(changeMs) setLastChangeAt(changeMs);
             if(!silent){
-              setToast({ type:'ok', msg:'初回：差分判定を設定しました（取得なし）' });
-              setTimeout(()=>setToast(null), 1400);
+              await refreshByScope();
+              setToast({ type:'ok', msg:'更新しました' });
+              setTimeout(()=>setToast(null), 1500);
+              return true;
             }
             return false;
           }
 
-          if(rev === prev){
+          if(token === prev){
             if(!silent){
               setToast({ type:'ok', msg:'変更なし（取得しません）' });
               setTimeout(()=>setToast(null), 1200);
@@ -887,26 +929,10 @@ const { useEffect, useMemo, useRef, useState } = React;
             return false;
           }
 
-          setLastRev(rev);
-          if(updatedMs) setLastChangeAt(updatedMs);
+          setLastRev(token);
+          if(changeMs) setLastChangeAt(changeMs);
 
-          // refresh by scope
-          if(scope === 'all'){
-            await refreshAllSilent();
-          }else if(scope === 'masters'){
-            await refreshMasters({ silent:true });
-          }else if(scope === 'monitor'){
-            await refreshMonitor(monitorDate, { silent:true });
-          }else if(scope === 'week'){
-            await refreshWeek(weekStart, { silent:true });
-          }else if(scope === 'month'){
-            await refreshMonth(monthCursor, { silent:true });
-          }else if(scope === 'year'){
-            await refreshYear({ silent:true });
-          }else{
-            // day / default
-            await refreshDay(selectedDate, { silent:true });
-          }
+          await refreshByScope();
 
           if(!silent){
             setToast({ type:'ok', msg:'更新しました' });
@@ -916,8 +942,10 @@ const { useEffect, useMemo, useRef, useState } = React;
         }catch(err){
           console.error(err);
           if(!silent){
-            setToast({ type:'ng', msg:'更新に失敗しました' });
-            setTimeout(()=>setToast(null), 2400);
+            const detail = err?.code || err?.message || '';
+            const s = String(detail || '').replace(/\s+/g,' ').slice(0, 60);
+            setToast({ type:'ng', msg: '更新に失敗しました' + (s ? `（${s}）` : '') });
+            setTimeout(()=>setToast(null), 2800);
           }
           return false;
         }
