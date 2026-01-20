@@ -1282,13 +1282,13 @@ async function deleteAllReservations(){
           <div className="max-w-7xl mx-auto px-4 mt-3">
             <div className="grid grid-cols-3 md:grid-cols-9 gap-2 no-print">
               <TabButton active={tab==="dashboard"} onClick={()=>setTab("dashboard")}>全体</TabButton>
-              <TabButton active={tab==="monitor"} onClick={()=>{ setTab("monitor"); setMonitorDate(todayKeyLocal()); }}>入口</TabButton>
-              <TabButton active={tab==="day"} onClick={()=>setTab("day")}>日</TabButton>
-              <TabButton active={tab==="week"} onClick={()=>{ setTab("week"); }}>週</TabButton>
+              <TabButton active={tab==="monitor"} onClick={()=>{ setTab("monitor"); setMonitorDate(todayKeyLocal()); }}>掲示板</TabButton>
+              <TabButton active={tab==="day"} onClick={()=>setTab("day")}>日予定</TabButton>
+              <TabButton active={tab==="week"} onClick={()=>{ setTab("week"); }}>週予定</TabButton>
               <TabButton active={tab==="month"} onClick={()=>{ setMonthCursor(monthKeyFromDateKey(selectedDate)); setTab("month"); }}>月</TabButton>
-              <TabButton active={tab==="year"} onClick={()=>{ setTab("year"); }}>年度</TabButton>
-              <TabButton active={tab==="equip"} onClick={()=>setTab("equip")}>機材</TabButton>
-              <TabButton active={tab==="rooms"} onClick={()=>setTab("rooms")}>部屋</TabButton>
+              <TabButton active={tab==="year"} onClick={()=>{ setTab("year"); }}>年間予定</TabButton>
+              <TabButton active={tab==="equip"} onClick={()=>setTab("equip")}>機材管理</TabButton>
+              <TabButton active={tab==="rooms"} onClick={()=>setTab("rooms")}>部屋マスタ</TabButton>
               <TabButton active={tab==="help"} onClick={()=>setTab("help")}>設定</TabButton>
             </div>
           </div>
