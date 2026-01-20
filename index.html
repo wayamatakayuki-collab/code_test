@@ -1631,7 +1631,33 @@ const { useEffect, useMemo, useRef, useState } = React;
                 onCancel={()=>{ setEditorOpen(false); setEditModel(null); }}
               />
             ) : null}
-          </Modal>\n\n          <Modal\n            open={importOpen}\n            onClose={()=>{ if(!importBusy) setImportOpen(false); }}\n            title="年間一括インポート"\n          >\n            <ImportModal\n              open={importOpen}\n              fyInfo={fyInfo}\n              roomsActive={roomsActive}\n              roomsMap={roomsMap}\n              equipmentsActive={equipmentsActive}\n              isLoggedIn={isLoggedIn}\n              importText={importText}\n              setImportText={setImportText}\n              importPreview={importPreview}\n              setImportPreview={setImportPreview}\n              importBusy={importBusy}\n              setImportBusy={setImportBusy}\n              bumpWrites={bumpWrites}\n              bumpReads={bumpReads}\n              setToast={setToast}\n              onDone={async ()=>{ setImportOpen(false); await refreshYear(); }}\n            />\n          </Modal>\n
+          </Modal>
+
+          <Modal
+            open={importOpen}
+            onClose={()=>{ if(!importBusy) setImportOpen(false); }}
+            title="年間一括インポート"
+          >
+            <ImportModal
+              open={importOpen}
+              fyInfo={fyInfo}
+              roomsActive={roomsActive}
+              roomsMap={roomsMap}
+              equipmentsActive={equipmentsActive}
+              isLoggedIn={isLoggedIn}
+              importText={importText}
+              setImportText={setImportText}
+              importPreview={importPreview}
+              setImportPreview={setImportPreview}
+              importBusy={importBusy}
+              setImportBusy={setImportBusy}
+              bumpWrites={bumpWrites}
+              bumpReads={bumpReads}
+              setToast={setToast}
+              onDone={async ()=>{ setImportOpen(false); await refreshYear(); }}
+            />
+          </Modal>
+
 
           {toast ? (
             <div className={classNames(
