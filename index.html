@@ -803,7 +803,43 @@ const { useEffect, useMemo, useRef, useState } = React;
         }
       }
 
-      async function refreshYear(opts={}
+      async function refreshYear(opts={}){
+        const silent = !!opts.silent;
+        if(!silent) setYearBusy(true);
+        try{
+          // 4月〜翌3月（selectedDate基準の年度）
+          const fy = (()=>{
+            const d = parseKeyToDate(selectedDate);
+            const y = d.getFullYear();
+            const m = d.getMonth()+1;
+            return (m>=4) ? y : (y-1);
+          })();
+          const start = `${fy}-04-01`;
+          const end = `${fy+1}-03-31`;
+
+          const snap = await db.collection("reservations")
+            .where("date", ">=", start)
+            .where("date", "<=", end)
+            .get();
+          bumpReads(snap.size);
+          const list = snap.docs.map(d => ({ id: d.id, ...d.data() }))
+            .sort((a,b)=>(String(a.date||"").localeCompare(String(b.date||"")) || String(a.roomId||"").localeCompare(String(b.roomId||"")) || Number(a.startMin||0)-Number(b.startMin||0)));
+          setYearReservations(list);
+          saveCache(`${CACHE_PREFIX}:year:${fy}`, list);
+          if(!silent){
+            setToast({ type:"ok", msg:"年度一覧を更新しました" });
+            setTimeout(()=>setToast(null), 1800);
+          }
+        }catch(err){
+          console.error(err);
+          if(!silent){
+            setToast({ type:"ng", msg:"年度一覧の取得に失敗しました" });
+            setTimeout(()=>setToast(null), 2400);
+          }
+        }finally{
+          if(!silent) setYearBusy(false);
+        }
+      }
 
       // --- smart refresh (diff-based) using meta/revision
       async function refreshAllSilent(){
@@ -831,7 +867,19 @@ const { useEffect, useMemo, useRef, useState } = React;
           const updatedMs = (updatedAt && typeof updatedAt.toMillis === 'function') ? updatedAt.toMillis() : null;
 
           const prev = (lastRevRef.current == null) ? null : Number(lastRevRef.current||0);
-          if(prev != null && rev === prev){
+
+          // 初回は「差分判定の基準を設定するだけ」（取得しない）
+          if(prev == null){
+            setLastRev(rev);
+            if(updatedMs) setLastChangeAt(updatedMs);
+            if(!silent){
+              setToast({ type:'ok', msg:'初回：差分判定を設定しました（取得なし）' });
+              setTimeout(()=>setToast(null), 1400);
+            }
+            return false;
+          }
+
+          if(rev === prev){
             if(!silent){
               setToast({ type:'ok', msg:'変更なし（取得しません）' });
               setTimeout(()=>setToast(null), 1200);
@@ -872,38 +920,6 @@ const { useEffect, useMemo, useRef, useState } = React;
             setTimeout(()=>setToast(null), 2400);
           }
           return false;
-        }
-      }
-){
-        const silent = !!opts.silent;
-        if(!silent) setYearBusy(true);
-        try{
-          // 4月〜翌3月（selectedDate基準の年度）
-          const fy = (()=>{
-            const d = parseKeyToDate(selectedDate);
-            const y = d.getFullYear();
-            const m = d.getMonth()+1;
-            return (m>=4) ? y : (y-1);
-          })();
-          const start = `${fy}-04-01`;
-          const end = `${fy+1}-03-31`;
-
-          const snap = await db.collection("reservations")
-            .where("date", ">=", start)
-            .where("date", "<=", end)
-            .get();
-          bumpReads(snap.size);
-          const list = snap.docs.map(d => ({ id: d.id, ...d.data() }))
-            .sort((a,b)=>(String(a.date||"").localeCompare(String(b.date||"")) || String(a.roomId||"").localeCompare(String(b.roomId||"")) || Number(a.startMin||0)-Number(b.startMin||0)));
-          setYearReservations(list);
-        }catch(err){
-          console.error(err);
-          if(!silent){
-            setToast({ type:"ng", msg:"年度一覧の取得に失敗しました" });
-            setTimeout(()=>setToast(null), 2400);
-          }
-        }finally{
-          if(!silent) setYearBusy(false);
         }
       }
 
@@ -1122,31 +1138,12 @@ async function deleteAllReservations(){
         if(!authReady) return;
         if(!autoRefresh) return;
 
-        const revRef = db.collection("meta").doc("revision");
-
-        
         const tick = async () => {
           if(autoRefreshingRef.current) return;
           if(busy || monthBusy || yearBusy || importBusy) return;
           autoRefreshingRef.current = true;
           try{
-            const snap = await revRef.get();
-            // ※差分判定のための1ドキュメント取得は、read/write（概算）には加算しません
-            setLastCheckAt(Date.now());
-
-            const rev = snap.exists ? Number((snap.data()||{}).rev || 0) : 0;
-            const updatedAt = snap.exists ? (snap.data()||{}).updatedAt : null;
-            const updatedMs = (updatedAt && typeof updatedAt.toMillis === 'function') ? updatedAt.toMillis() : null;
-
-            if(lastRevRef.current == null){
-              setLastRev(rev);
-              if(updatedMs) setLastChangeAt(updatedMs);
-              await refreshAllSilent();
-            }else if(rev !== Number(lastRevRef.current||0)){
-              setLastRev(rev);
-              if(updatedMs) setLastChangeAt(updatedMs);
-              await refreshAllSilent();
-            }
+            await smartRefresh({ silent:true, scope:'all' });
           }catch(e){
             console.error(e);
           }finally{
@@ -1158,6 +1155,7 @@ async function deleteAllReservations(){
         tick();
         return () => clearInterval(id);
       }, [authReady, autoRefresh, selectedDate, monitorDate, weekStart, monthCursor, busy, monthBusy, yearBusy, importBusy]);
+
 
 
       const fyInfo = useMemo(() => {
