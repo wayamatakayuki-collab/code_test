@@ -610,17 +610,17 @@ const { useEffect, useMemo, useRef, useState } = React;
             }
           }
 
-          const roomsList = await getList(\"rooms\", DEFAULT_ROOMS, \"rooms\");
-          const eqList = await getList(\"equipments\", DEFAULT_EQUIPMENTS, \"equipments\");
+          const roomsList = await getList("rooms", DEFAULT_ROOMS, "rooms");
+          const eqList = await getList("equipments", DEFAULT_EQUIPMENTS, "equipments");
           setRooms(roomsList);
           setEquipments(eqList);
 
           if(!silent){
-            setToast({ type:\"ok\", msg: usedFallback ? \"マスタ更新：キャッシュ/初期値を使用しました\" : \"マスタを更新しました\" });
+            setToast({ type:"ok", msg: usedFallback ? "マスタ更新：キャッシュ/初期値を使用しました" : "マスタを更新しました" });
           }
         }catch(err){
           console.error(err);
-          if(!silent) setToast({ type:\"ng\", msg:\"マスタ更新に失敗しました\" });
+          if(!silent) setToast({ type:"ng", msg:"マスタ更新に失敗しました" });
         }finally{
           if(!silent){
             setBusy(false);
@@ -940,14 +940,14 @@ const { useEffect, useMemo, useRef, useState } = React;
 
               <div className="flex items-center gap-2">
                 <button
-                  className={classNames(\"rounded-2xl px-4 py-2 font-black border shadow-sm\",
-                    (busy || monthBusy || yearBusy || importBusy) ? \"bg-slate-100 text-slate-400 border-slate-200\" : \"bg-sky-600 text-white border-sky-600\")}
+                  className={classNames("rounded-2xl px-4 py-2 font-black border shadow-sm",
+                    (busy || monthBusy || yearBusy || importBusy) ? "bg-slate-100 text-slate-400 border-slate-200" : "bg-sky-600 text-white border-sky-600")}
                   disabled={busy || monthBusy || yearBusy || importBusy}
                   onClick={() => {
-                    if(tab === \"monitor\") return refreshMonitor(monitorDate);
-                    if(tab === \"week\") return refreshWeek(weekStart);
-                    if(tab === \"month\") return refreshMonth(monthCursor);
-                    if(tab === \"year\") return refreshYear();
+                    if(tab === "monitor") return refreshMonitor(monitorDate);
+                    if(tab === "week") return refreshWeek(weekStart);
+                    if(tab === "month") return refreshMonth(monthCursor);
+                    if(tab === "year") return refreshYear();
                     return refreshDay(selectedDate);
                   }}
                 >
@@ -984,16 +984,16 @@ const { useEffect, useMemo, useRef, useState } = React;
           </div>
 
           <div className="max-w-7xl mx-auto px-4 mt-3">
-            <div className=\"grid grid-cols-3 md:grid-cols-9 gap-2 no-print\">
-              <TabButton active={tab===\"dashboard\"} onClick={()=>setTab(\"dashboard\")}>全体</TabButton>
-              <TabButton active={tab===\"monitor\"} onClick={()=>{ setTab(\"monitor\"); setMonitorDate(todayKeyLocal()); }}>入口</TabButton>
-              <TabButton active={tab===\"day\"} onClick={()=>setTab(\"day\")}>日</TabButton>
-              <TabButton active={tab===\"week\"} onClick={()=>{ setTab(\"week\"); }}>週</TabButton>
-              <TabButton active={tab===\"month\"} onClick={()=>{ setMonthCursor(monthKeyFromDateKey(selectedDate)); setTab(\"month\"); }}>月</TabButton>
-              <TabButton active={tab===\"year\"} onClick={()=>{ setTab(\"year\"); }}>年度</TabButton>
-              <TabButton active={tab===\"equip\"} onClick={()=>setTab(\"equip\")}>機材</TabButton>
-              <TabButton active={tab===\"rooms\"} onClick={()=>setTab(\"rooms\")}>部屋</TabButton>
-              <TabButton active={tab===\"help\"} onClick={()=>setTab(\"help\")}>設定</TabButton>
+            <div className="grid grid-cols-3 md:grid-cols-9 gap-2 no-print">
+              <TabButton active={tab==="dashboard"} onClick={()=>setTab("dashboard")}>全体</TabButton>
+              <TabButton active={tab==="monitor"} onClick={()=>{ setTab("monitor"); setMonitorDate(todayKeyLocal()); }}>入口</TabButton>
+              <TabButton active={tab==="day"} onClick={()=>setTab("day")}>日</TabButton>
+              <TabButton active={tab==="week"} onClick={()=>{ setTab("week"); }}>週</TabButton>
+              <TabButton active={tab==="month"} onClick={()=>{ setMonthCursor(monthKeyFromDateKey(selectedDate)); setTab("month"); }}>月</TabButton>
+              <TabButton active={tab==="year"} onClick={()=>{ setTab("year"); }}>年度</TabButton>
+              <TabButton active={tab==="equip"} onClick={()=>setTab("equip")}>機材</TabButton>
+              <TabButton active={tab==="rooms"} onClick={()=>setTab("rooms")}>部屋</TabButton>
+              <TabButton active={tab==="help"} onClick={()=>setTab("help")}>設定</TabButton>
             </div>
           </div>
 
@@ -1631,7 +1631,7 @@ const { useEffect, useMemo, useRef, useState } = React;
                 onCancel={()=>{ setEditorOpen(false); setEditModel(null); }}
               />
             ) : null}
-          </Modal>\n\n          <Modal\n            open={importOpen}\n            onClose={()=>{ if(!importBusy) setImportOpen(false); }}\n            title=\"年間一括インポート\"\n          >\n            <ImportModal\n              open={importOpen}\n              fyInfo={fyInfo}\n              roomsActive={roomsActive}\n              roomsMap={roomsMap}\n              equipmentsActive={equipmentsActive}\n              isLoggedIn={isLoggedIn}\n              importText={importText}\n              setImportText={setImportText}\n              importPreview={importPreview}\n              setImportPreview={setImportPreview}\n              importBusy={importBusy}\n              setImportBusy={setImportBusy}\n              bumpWrites={bumpWrites}\n              bumpReads={bumpReads}\n              setToast={setToast}\n              onDone={async ()=>{ setImportOpen(false); await refreshYear(); }}\n            />\n          </Modal>\n
+          </Modal>\n\n          <Modal\n            open={importOpen}\n            onClose={()=>{ if(!importBusy) setImportOpen(false); }}\n            title="年間一括インポート"\n          >\n            <ImportModal\n              open={importOpen}\n              fyInfo={fyInfo}\n              roomsActive={roomsActive}\n              roomsMap={roomsMap}\n              equipmentsActive={equipmentsActive}\n              isLoggedIn={isLoggedIn}\n              importText={importText}\n              setImportText={setImportText}\n              importPreview={importPreview}\n              setImportPreview={setImportPreview}\n              importBusy={importBusy}\n              setImportBusy={setImportBusy}\n              bumpWrites={bumpWrites}\n              bumpReads={bumpReads}\n              setToast={setToast}\n              onDone={async ()=>{ setImportOpen(false); await refreshYear(); }}\n            />\n          </Modal>\n
 
           {toast ? (
             <div className={classNames(
