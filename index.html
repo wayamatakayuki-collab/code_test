@@ -173,11 +173,10 @@ const { useEffect, useMemo, useRef, useState } = React;
       dt.setDate(dt.getDate()+add);
       return todayKeyLocal(dt);
     };
-    const startOfWeekMonday = (key) => {
+    const startOfWeekSunday = (key) => {
       const dt = parseKeyToDate(key);
-      const dow = dt.getDay();
-      const diff = (dow === 0) ? -6 : (1 - dow);
-      dt.setDate(dt.getDate()+diff);
+      const dow = dt.getDay(); // 0=Sun
+      dt.setDate(dt.getDate() - dow);
       return todayKeyLocal(dt);
     };
     const hhmmToMin = (hhmm) => {
@@ -302,6 +301,17 @@ const { useEffect, useMemo, useRef, useState } = React;
         const obj = JSON.parse(raw);
         return obj?.value ?? null;
       }catch(e){ return null; }
+    }
+
+    function clearCachePrefix(prefix){
+      try{
+        const ks = [];
+        for(let i=0;i<localStorage.length;i++){
+          const k = localStorage.key(i);
+          if(k && String(k).startsWith(prefix)) ks.push(k);
+        }
+        ks.forEach(k => { try{ localStorage.removeItem(k); }catch(e){} });
+      }catch(e){}
     }
 
     function classNames(...xs){ return xs.filter(Boolean).join(" "); }
@@ -434,7 +444,7 @@ const { useEffect, useMemo, useRef, useState } = React;
       const [dayReservations, setDayReservations] = useState([]);
       const [monitorReservations, setMonitorReservations] = useState([]);
 
-      const [weekStart, setWeekStart] = useState(startOfWeekMonday(selectedDate));
+      const [weekStart, setWeekStart] = useState(startOfWeekSunday(selectedDate));
       const weekKeys = useMemo(()=>Array.from({length:7}, (_,i)=>addDaysKey(weekStart, i)), [weekStart]);
 
       const [weekReservations, setWeekReservations] = useState([]);
@@ -534,7 +544,7 @@ const { useEffect, useMemo, useRef, useState } = React;
       }, []);
 
       // Sync weekStart with selectedDate
-      useEffect(() => { setWeekStart(startOfWeekMonday(selectedDate)); }, [selectedDate]);
+      useEffect(() => { setWeekStart(startOfWeekSunday(selectedDate)); }, [selectedDate]);
 
       // Load caches on mount
       useEffect(() => {
@@ -629,8 +639,9 @@ const { useEffect, useMemo, useRef, useState } = React;
         }
       }
 
-      async function refreshDay(dateKey){
-        setBusy(true);
+      async function refreshDay(dateKey, opts={}){
+        const silent = !!opts.silent;
+        if(!silent) setBusy(true);
         try{
           const snap = await db.collection("reservations").where("date","==",dateKey).get();
           bumpReads(snap.size);
@@ -638,18 +649,23 @@ const { useEffect, useMemo, useRef, useState } = React;
             .sort((a,b)=>(String(a.roomId||"").localeCompare(String(b.roomId||"")) || Number(a.startMin||0)-Number(b.startMin||0)));
           setDayReservations(list);
           saveCache(`${CACHE_PREFIX}:reservations:${dateKey}`, list);
-          setToast({ type:"ok", msg:"更新しました" });
+          if(!silent){
+            setToast({ type:"ok", msg:"更新しました" });
+          }
         }catch(err){
           console.error(err);
-          setToast({ type:"ng", msg:"更新に失敗しました" });
+          if(!silent) setToast({ type:"ng", msg:"更新に失敗しました" });
         }finally{
-          setBusy(false);
-          setTimeout(()=>setToast(null), 2000);
+          if(!silent){
+            setBusy(false);
+            setTimeout(()=>setToast(null), 2000);
+          }
         }
       }
 
-      async function refreshMonitor(dateKey){
-        setBusy(true);
+      async function refreshMonitor(dateKey, opts={}){
+        const silent = !!opts.silent;
+        if(!silent) setBusy(true);
         try{
           const snap = await db.collection("reservations").where("date","==",dateKey).get();
           bumpReads(snap.size);
@@ -657,18 +673,23 @@ const { useEffect, useMemo, useRef, useState } = React;
             .sort((a,b)=>(String(a.roomId||"").localeCompare(String(b.roomId||"")) || Number(a.startMin||0)-Number(b.startMin||0)));
           setMonitorReservations(list);
           saveCache(`${CACHE_PREFIX}:monitor:${dateKey}`, list);
-          setToast({ type:"ok", msg:"モニターを更新しました" });
+          if(!silent){
+            setToast({ type:"ok", msg:"モニターを更新しました" });
+          }
         }catch(err){
           console.error(err);
-          setToast({ type:"ng", msg:"更新に失敗しました" });
+          if(!silent) setToast({ type:"ng", msg:"更新に失敗しました" });
         }finally{
-          setBusy(false);
-          setTimeout(()=>setToast(null), 2000);
+          if(!silent){
+            setBusy(false);
+            setTimeout(()=>setToast(null), 2000);
+          }
         }
       }
 
-      async function refreshWeek(startKey){
-        setBusy(true);
+      async function refreshWeek(startKey, opts={}){
+        const silent = !!opts.silent;
+        if(!silent) setBusy(true);
         try{
           const endKey = addDaysKey(startKey, 6);
           const snap = await db.collection("reservations")
@@ -680,18 +701,23 @@ const { useEffect, useMemo, useRef, useState } = React;
             .sort((a,b)=>(String(a.date||"").localeCompare(String(b.date||"")) || String(a.roomId||"").localeCompare(String(b.roomId||"")) || Number(a.startMin||0)-Number(b.startMin||0)));
           setWeekReservations(list);
           saveCache(`${CACHE_PREFIX}:week:${startKey}`, list);
-          setToast({ type:"ok", msg:"週を更新しました" });
+          if(!silent){
+            setToast({ type:"ok", msg:"週を更新しました" });
+          }
         }catch(err){
           console.error(err);
-          setToast({ type:"ng", msg:"週の更新に失敗しました" });
+          if(!silent) setToast({ type:"ng", msg:"週の更新に失敗しました" });
         }finally{
-          setBusy(false);
-          setTimeout(()=>setToast(null), 2000);
+          if(!silent){
+            setBusy(false);
+            setTimeout(()=>setToast(null), 2000);
+          }
         }
       }
 
-      async function refreshMonth(monthKey){
-        setMonthBusy(true);
+      async function refreshMonth(monthKey, opts={}){
+        const silent = !!opts.silent;
+        if(!silent) setMonthBusy(true);
         try{
           const start = startOfMonthKey(monthKey);
           const end = endOfMonthKey(monthKey);
@@ -704,19 +730,24 @@ const { useEffect, useMemo, useRef, useState } = React;
             .sort((a,b)=>(String(a.date||"").localeCompare(String(b.date||"")) || Number(a.startMin||0)-Number(b.startMin||0) || String(a.roomId||"").localeCompare(String(b.roomId||""))));
           setMonthReservations(list);
           saveCache(`${CACHE_PREFIX}:month:${monthKey}`, list);
-          setToast({ type:"ok", msg:"月予定を更新しました" });
-          setTimeout(()=>setToast(null), 1800);
+          if(!silent){
+            setToast({ type:"ok", msg:"月予定を更新しました" });
+            setTimeout(()=>setToast(null), 1800);
+          }
         }catch(err){
           console.error(err);
-          setToast({ type:"ng", msg:"月予定の更新に失敗しました" });
-          setTimeout(()=>setToast(null), 2400);
+          if(!silent){
+            setToast({ type:"ng", msg:"月予定の更新に失敗しました" });
+            setTimeout(()=>setToast(null), 2400);
+          }
         }finally{
-          setMonthBusy(false);
+          if(!silent) setMonthBusy(false);
         }
       }
 
-      async function refreshYear(){
-        setYearBusy(true);
+      async function refreshYear(opts={}){
+        const silent = !!opts.silent;
+        if(!silent) setYearBusy(true);
         try{
           // 4月〜翌3月（selectedDate基準の年度）
           const fy = (()=>{
@@ -738,10 +769,12 @@ const { useEffect, useMemo, useRef, useState } = React;
           setYearReservations(list);
         }catch(err){
           console.error(err);
-          setToast({ type:"ng", msg:"年度一覧の取得に失敗しました" });
-          setTimeout(()=>setToast(null), 2400);
+          if(!silent){
+            setToast({ type:"ng", msg:"年度一覧の取得に失敗しました" });
+            setTimeout(()=>setToast(null), 2400);
+          }
         }finally{
-          setYearBusy(false);
+          if(!silent) setYearBusy(false);
         }
       }
 
@@ -867,11 +900,11 @@ const { useEffect, useMemo, useRef, useState } = React;
           setEditModel(null);
 
           // 画面に応じて更新
-          await refreshDay(selectedDate);
-          if(tab === "monitor") await refreshMonitor(monitorDate);
-          if(tab === "week") await refreshWeek(weekStart);
-          if(tab === "month") await refreshMonth(monthCursor);
-          if(tab === "year") await refreshYear();
+          await refreshDay(selectedDate, { silent:true });
+          if(tab === "monitor") await refreshMonitor(monitorDate, { silent:true });
+          if(tab === "week") await refreshWeek(weekStart, { silent:true });
+          if(tab === "month") await refreshMonth(monthCursor, { silent:true });
+          if(tab === "year") await refreshYear({ silent:true });
 
           setToast({ type:"ok", msg:"保存しました" });
           setTimeout(()=>setToast(null), 1500);
@@ -891,11 +924,11 @@ const { useEffect, useMemo, useRef, useState } = React;
         try{
           await db.collection("reservations").doc(id).delete();
           bumpWrites(1);
-          await refreshDay(selectedDate);
-          if(tab === "monitor") await refreshMonitor(monitorDate);
-          if(tab === "week") await refreshWeek(weekStart);
-          if(tab === "month") await refreshMonth(monthCursor);
-          if(tab === "year") await refreshYear();
+          await refreshDay(selectedDate, { silent:true });
+          if(tab === "monitor") await refreshMonitor(monitorDate, { silent:true });
+          if(tab === "week") await refreshWeek(weekStart, { silent:true });
+          if(tab === "month") await refreshMonth(monthCursor, { silent:true });
+          if(tab === "year") await refreshYear({ silent:true });
         }catch(err){
           console.error(err);
           setToast({ type:"ng", msg:"削除に失敗しました" });
@@ -905,7 +938,48 @@ const { useEffect, useMemo, useRef, useState } = React;
         }
       }
 
-      function doPrint(){
+async function deleteAllReservations(){
+        if(!isLoggedIn) return;
+        const ok1 = confirm('【危険】全ての予定（予約）を削除します。よろしいですか？');
+        if(!ok1) return;
+        const ok2 = confirm('最終確認：本当に全削除しますか？（元に戻せません）');
+        if(!ok2) return;
+        setBusy(true);
+        try{
+          let total = 0;
+          while(true){
+            const snap = await db.collection('reservations').limit(420).get();
+            bumpReads(snap.size);
+            if(snap.empty) break;
+            const batch = db.batch();
+            snap.docs.forEach(doc => batch.delete(doc.ref));
+            await batch.commit();
+            bumpWrites(snap.size);
+            total += snap.size;
+            if(snap.size < 420) break;
+          }
+          // clear local caches related to reservations
+          clearCachePrefix(`${CACHE_PREFIX}:reservations:`);
+          clearCachePrefix(`${CACHE_PREFIX}:monitor:`);
+          clearCachePrefix(`${CACHE_PREFIX}:week:`);
+          clearCachePrefix(`${CACHE_PREFIX}:month:`);
+          setDayReservations([]);
+          setMonitorReservations([]);
+          setWeekReservations([]);
+          setMonthReservations([]);
+          setYearReservations([]);
+          setToast({ type:'ok', msg:`全予定を削除しました（${total}件）` });
+          setTimeout(()=>setToast(null), 3200);
+        }catch(err){
+          console.error(err);
+          setToast({ type:'ng', msg:'全削除に失敗しました' });
+          setTimeout(()=>setToast(null), 3200);
+        }finally{
+          setBusy(false);
+        }
+      }
+
+            function doPrint(){
         setTimeout(()=>window.print(), 120);
       }
 
@@ -918,8 +992,34 @@ const { useEffect, useMemo, useRef, useState } = React;
       // Auto refresh day reservations on first load
       useEffect(() => {
         if(!authReady) return;
-        refreshDay(selectedDate);
+        refreshDay(selectedDate, { silent:true });
       }, [authReady]);
+
+      // Auto refresh all tabs every minute (silent)
+      const autoRefreshingRef = useRef(false);
+      useEffect(() => {
+        if(!authReady) return;
+        const tick = async () => {
+          if(autoRefreshingRef.current) return;
+          if(busy || monthBusy || yearBusy || importBusy) return;
+          autoRefreshingRef.current = true;
+          try{
+            await refreshMasters({ silent:true });
+            await refreshDay(selectedDate, { silent:true });
+            await refreshMonitor(monitorDate, { silent:true });
+            await refreshWeek(weekStart, { silent:true });
+            await refreshMonth(monthCursor, { silent:true });
+            await refreshYear({ silent:true });
+          }catch(e){
+            console.error(e);
+          }finally{
+            autoRefreshingRef.current = false;
+          }
+        };
+        const id = setInterval(tick, 60*1000);
+        tick();
+        return () => clearInterval(id);
+      }, [authReady, selectedDate, monitorDate, weekStart, monthCursor, busy, monthBusy, yearBusy, importBusy]);
 
       const fyInfo = useMemo(() => {
         const d = parseKeyToDate(selectedDate);
@@ -1245,7 +1345,7 @@ const { useEffect, useMemo, useRef, useState } = React;
                 <SectionTitle
                   icon="🧾"
                   title="週予定"
-                  sub={`週：${weekStart}〜${addDaysKey(weekStart,6)}（月曜始まり）`}
+                  sub={`週：${weekStart}〜${addDaysKey(weekStart,6)}（日曜始まり）`}
                   right={
                     <div className="flex items-center gap-2 flex-wrap no-print">
                       <button className="rounded-2xl px-4 py-2 font-black bg-white border border-slate-200 text-slate-700" onClick={()=>{ const prev=addDaysKey(weekStart,-7); setWeekStart(prev); }}>
@@ -1267,7 +1367,7 @@ const { useEffect, useMemo, useRef, useState } = React;
                 <div className="mt-4 grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 2xl:grid-cols-7 gap-3">
                   {weekKeys.map((dk, idx) => {
                     const list = (weekReservations||[]).filter(r => r.date === dk).slice().sort((a,b)=>Number(a.startMin||0)-Number(b.startMin||0));
-                    const names = ["月","火","水","木","金","土","日"];
+                    const names = ["日","月","火","水","木","金","土"];
                     return (
                       <div key={dk} className="rounded-3xl border border-slate-100 bg-white p-4 flex flex-col min-h-[220px]">
                         <div className="flex items-center justify-between gap-2">
@@ -1339,7 +1439,7 @@ const { useEffect, useMemo, useRef, useState } = React;
 
                 <div className="mt-3 text-xs font-bold text-slate-400">※月予定は「この月を更新」でFirestoreから取得（概算readに反映）</div>
 
-                <MonthCalendar
+                <MonthList
                   monthKey={monthCursor}
                   reservations={monthReservations}
                   roomsMap={roomsMap}
@@ -1359,6 +1459,11 @@ const { useEffect, useMemo, useRef, useState } = React;
                       {isLoggedIn ? (
                         <button className="rounded-2xl px-4 py-2 font-black bg-slate-900 text-white border border-slate-900" onClick={()=>setImportOpen(true)} disabled={importBusy||yearBusy}>
                           年間一括インポート
+                        </button>
+                      ) : null}
+                      {isLoggedIn ? (
+                        <button className="rounded-2xl px-4 py-2 font-black bg-rose-600 text-white border border-rose-600" onClick={deleteAllReservations} disabled={busy||importBusy||yearBusy}>
+                          全予定削除
                         </button>
                       ) : null}
                       <button className={classNames("rounded-2xl px-4 py-2 font-black border shadow-sm",
@@ -1654,7 +1759,7 @@ const { useEffect, useMemo, useRef, useState } = React;
               bumpWrites={bumpWrites}
               bumpReads={bumpReads}
               setToast={setToast}
-              onDone={async ()=>{ setImportOpen(false); await refreshYear(); }}
+              onDone={async ()=>{ setImportOpen(false); await refreshYear({ silent:true }); }}
             />
           </Modal>
 
@@ -1914,307 +2019,63 @@ const { useEffect, useMemo, useRef, useState } = React;
 
 
     /**********************
-     * Month Calendar
+     * Month (vertical list)
      **********************/
-    function MonthCalendar({monthKey, reservations, roomsMap, onPickDate}){
-      const [y,m] = String(monthKey||"").split("-").map(Number);
-      const first = new Date(y, (m||1)-1, 1);
-      // Monday-start calendar
-      const firstDow = (first.getDay() + 6) % 7; // 0=Mon
-      const daysInMonth = new Date(y, (m||1), 0).getDate();
-      const prevMonthDays = new Date(y, (m||1)-1, 0).getDate();
-
-      const byDate = useMemo(() => {
-        const mp = {};
-        for(const r of reservations||[]){
-          const dk = r.date;
-          if(!mp[dk]) mp[dk] = [];
-          mp[dk].push(r);
-        }
-        for(const k of Object.keys(mp)) mp[k].sort((a,b)=>(Number(a.startMin||0)-Number(b.startMin||0)));
-        return mp;
-      }, [reservations]);
-
-      const cells = [];
-      const total = 42; // 6 weeks
-      for(let i=0;i<total;i++){
-        const dayNum = i - firstDow + 1;
-        let cy=y, cm=m, cd=dayNum, inMonth=true;
-        if(dayNum <= 0){
-          const pm = addMonthsKey(monthKey, -1);
-          const [py,pm2] = pm.split('-').map(Number);
-          cy=py; cm=pm2; cd=prevMonthDays + dayNum; inMonth=false;
-        }else if(dayNum > daysInMonth){
-          const nm = addMonthsKey(monthKey, 1);
-          const [ny,nm2] = nm.split('-').map(Number);
-          cy=ny; cm=nm2; cd=dayNum - daysInMonth; inMonth=false;
-        }
-        const dk = dateKeyFromParts(cy, cm, cd);
-        cells.push({ dk, inMonth, cd });
+    function MonthList({monthKey, reservations, roomsMap, onPickDate}){
+      const [y, m] = String(monthKey||'').split('-').map(Number);
+      const days = new Date(y, m, 0).getDate();
+      const byDate = {};
+      (reservations||[]).forEach(r => {
+        const dk = r.date;
+        if(!byDate[dk]) byDate[dk] = [];
+        byDate[dk].push(r);
+      });
+      for(const k of Object.keys(byDate)){
+        byDate[k].sort((a,b)=>Number(a.startMin||0)-Number(b.startMin||0) || String(a.roomId||'').localeCompare(String(b.roomId||'')));
       }
+      const w = ['日','月','火','水','木','金','土'];
 
-      const names = ["月","火","水","木","金","土","日"];
+      const roomLabel = (rid) => {
+        const r = roomsMap?.[rid];
+        if(!r) return rid;
+        const b = (r.building||'').trim();
+        return b ? `${b}/${r.name}` : r.name;
+      };
 
       return (
         <div className="mt-4">
-          <div className="grid grid-cols-7 gap-2">
-            {names.map(n => (
-              <div key={n} className="text-xs font-black text-slate-500 px-2">{n}</div>
-            ))}
+          <div className="rounded-3xl border border-slate-100 bg-white overflow-hidden">
+            <div className="max-h-[70vh] overflow-auto">
+              {Array.from({length:days}, (_,i)=>i+1).map(d => {
+                const dk = `${y}-${pad2(m)}-${pad2(d)}`;
+                const dow = parseKeyToDate(dk).getDay();
+                const list = byDate[dk] || [];
+                return (
+                  <div key={dk} className="border-b border-slate-100 last:border-b-0">
+                    <button
+                      className="w-full text-left px-4 py-3 bg-slate-50 hover:bg-slate-100 flex items-center justify-between gap-3"
+                      onClick={()=>onPickDate?.(dk)}
+                      type="button"
+                    >
+                      <div className="font-black text-slate-800">{d}日（{w[dow]}）</div>
+                      <div className="text-xs font-black text-slate-500">{list.length}件</div>
+                    </button>
 
-            {cells.map(c => {
-              const list = byDate[c.dk] || [];
-              const isToday = c.dk === todayKeyLocal();
-              return (
-                <button
-                  key={c.dk}
-                  className={classNames(
-                    "rounded-2xl border p-2 text-left min-h-[98px] hover:bg-slate-50 break-avoid",
-                    c.inMonth ? "bg-white border-slate-200" : "bg-slate-50 border-slate-100",
-                    isToday ? "ring-2 ring-sky-300" : ""
-                  )}
-                  onClick={()=>onPickDate(c.dk)}
-                >
-                  <div className="flex items-center justify-between">
-                    <div className={classNames("text-sm font-black", c.inMonth ? "text-slate-900" : "text-slate-400")}>{c.cd}</div>
-                    {list.length ? <span className="text-[11px] font-black text-slate-500">{list.length}</span> : null}
-                  </div>
-                  <div className="mt-1 space-y-1">
-                    {list.slice(0,2).map(r => (
-                      <div key={r.id} className="text-[11px] font-black text-slate-700 truncate">
-                        {minToHHMM(r.startMin||0)} {roomsMap[r.roomId]?.name || r.roomId} / {r.groupName}
-                      </div>
-                    ))}
-                    {list.length>2 ? <div className="text-[11px] font-black text-slate-400">…ほか {list.length-2}件</div> : null}
-                  </div>
-                </button>
-              );
-            })}
-          </div>
-        </div>
-      );
-    }
-
-    /**********************
-     * Year Grouped List
-     **********************/
-    function YearGroupedList({fyInfo, roomsMap, equipmentsActive, reservations, query, roomFilter, isLoggedIn, onEdit, onJumpDay}){
-      const q = (query||"").trim().toLowerCase();
-      const filtered = useMemo(() => {
-        return (reservations||[]).filter(r => {
-          if(roomFilter !== "all" && r.roomId !== roomFilter) return false;
-          if(!q) return true;
-          const t = `${r.groupName||""} ${r.note||""}`.toLowerCase();
-          return t.includes(q);
-        });
-      }, [reservations, q, roomFilter]);
-
-      const months = useMemo(() => {
-        const order = [];
-        for(let m=4;m<=12;m++) order.push(`${fyInfo.fy}-${pad2(m)}`);
-        for(let m=1;m<=3;m++) order.push(`${fyInfo.fy+1}-${pad2(m)}`);
-        const by = {};
-        for(const mk of order) by[mk] = [];
-        for(const r of filtered){
-          const mk = String(r.date||"").slice(0,7);
-          if(!by[mk]) by[mk] = [];
-          by[mk].push(r);
-        }
-        for(const mk of Object.keys(by)){
-          by[mk].sort((a,b)=>(String(a.date||"").localeCompare(String(b.date||"")) || Number(a.startMin||0)-Number(b.startMin||0) || String(a.roomId||"").localeCompare(String(b.roomId||""))));
-        }
-        return { order, by };
-      }, [filtered, fyInfo]);
-
-      return (
-        <div className="mt-4 space-y-4 max-h-[65vh] overflow-auto pr-1 no-scrollbar">
-          {months.order.map(mk => {
-            const list = months.by[mk] || [];
-            if(list.length===0) return null;
-            return (
-              <div key={mk} id={`ym-${mk}`} className="rounded-3xl border border-slate-100 bg-slate-50 p-4">
-                <div className="flex items-center justify-between gap-2">
-                  <div className="font-black text-slate-900">{mk}</div>
-                  <Pill tone="slate">{list.length}件</Pill>
-                </div>
-                <div className="mt-3 columns-1 md:columns-2 xl:columns-3 gap-3">
-                  {list.map(r => (
-                    <div key={r.id} className="break-avoid mb-3 rounded-2xl border border-slate-200 bg-white p-3">
-                      <div className="font-black text-slate-900">{r.date} {minToHHMM(r.startMin||0)}–{minToHHMM(r.endMin||0)}</div>
-                      <div className="text-xs font-black text-slate-600 mt-1">{roomsMap[r.roomId]?.building || ""} / {roomsMap[r.roomId]?.name || r.roomId}</div>
-                      <div className="text-sm font-black text-slate-800 mt-1 break-words">{r.groupName}</div>
-                      {r.note ? <div className="text-xs font-bold text-slate-500 mt-1 break-words">{r.note}</div> : null}
-                      <div className="mt-2 flex flex-wrap gap-1">
-                        {equipmentsActive.map(e => (Number(r?.equipment?.[e.id]||0)>0) ? (
-                          <Pill key={e.id} tone="sky">{(e.abbr||e.name)} {Number(r.equipment[e.id]||0)}</Pill>
-                        ) : null)}
-                      </div>
-                      <div className="mt-2 flex gap-2 no-print">
-                        <button className="px-3 py-2 rounded-2xl bg-white border border-slate-200 font-black text-slate-700" onClick={()=>onJumpDay(r.date)}>日へ</button>
-                        {isLoggedIn ? (
-                          <button className="px-3 py-2 rounded-2xl bg-white border border-slate-200 font-black text-slate-700" onClick={()=>onEdit(r)}>編集</button>
-                        ) : null}
-                      </div>
+                    <div className="px-4 py-3 space-y-2">
+                      {list.length===0 ? (
+                        <div className="text-xs font-bold text-slate-400">予定なし</div>
+                      ) : list.map(r => (
+                        <div key={r.id} className="p-3 rounded-2xl bg-white border border-slate-200">
+                          <div className="font-black text-slate-800">{minToHHMM(r.startMin||0)}–{minToHHMM(r.endMin||0)} / {roomLabel(r.roomId)}</div>
+                          <div className="text-sm font-black text-slate-700 mt-1 break-words">{r.groupName}</div>
+                          {r.note ? <div className="text-xs font-bold text-slate-500 mt-1 break-words">{r.note}</div> : null}
+                        </div>
+                      ))}
                     </div>
-                  ))}
-                </div>
-              </div>
-            );
-          })}
-          {filtered.length===0 ? (
-            <div className="text-sm font-bold text-slate-400 p-3">年間データがありません（「年間を更新」または絞り込み条件を見直してください）</div>
-          ) : null}
-        </div>
-      );
-    }
-
-    /**********************
-     * Monitor Timeline Board
-     **********************/
-    function MonitorTimelineBoard({dateKey, rooms, reservations, equipmentsActive, startHHMM, endHHMM, autoPage, intervalSec, roomsPerPage}){
-      const startMin = hhmmToMin(startHHMM||"08:00");
-      const endMin = hhmmToMin(endHHMM||"20:00");
-      const range = Math.max(60, endMin - startMin);
-
-      const byRoom = useMemo(() => {
-        const m = {};
-        for(const r of rooms) m[r.id] = [];
-        for(const rr of reservations||[]){
-          if(!m[rr.roomId]) m[rr.roomId] = [];
-          m[rr.roomId].push(rr);
-        }
-        for(const k of Object.keys(m)) m[k].sort((a,b)=>Number(a.startMin||0)-Number(b.startMin||0));
-        return m;
-      }, [rooms, reservations]);
-
-      const usedRooms = useMemo(() => rooms.filter(r => (byRoom[r.id]||[]).length > 0), [rooms, byRoom]);
-
-      const wrapRef = useRef(null);
-      const [autoPerPage, setAutoPerPage] = useState(8);
-      useEffect(() => {
-        if(String(roomsPerPage||"auto") !== "auto") return;
-        const calc = () => {
-          const h = wrapRef.current?.clientHeight || 600;
-          const per = Math.max(4, Math.min(16, Math.floor((h - 64) / 74)));
-          setAutoPerPage(per);
-        };
-        calc();
-        window.addEventListener("resize", calc);
-        return () => window.removeEventListener("resize", calc);
-      }, [roomsPerPage]);
-
-      const perPage = (String(roomsPerPage||"auto") === "auto") ? autoPerPage : Math.max(1, Number(roomsPerPage||autoPerPage));
-      const pages = Math.max(1, Math.ceil(usedRooms.length / perPage));
-      const [page, setPage] = useState(0);
-
-      useEffect(() => { setPage(0); }, [dateKey, perPage, usedRooms.length]);
-
-      useEffect(() => {
-        if(!autoPage || pages<=1) return;
-        const ms = Math.max(5, Number(intervalSec||12)) * 1000;
-        const t = setInterval(() => setPage(p => (p+1)%pages), ms);
-        return () => clearInterval(t);
-      }, [autoPage, intervalSec, pages]);
-
-      const pageRooms = usedRooms.slice(page*perPage, (page+1)*perPage);
-
-      const hourTicks = useMemo(() => {
-        const ticks = [];
-        const startH = Math.ceil(startMin/60);
-        const endH = Math.floor(endMin/60);
-        for(let h=startH; h<=endH; h++){
-          const t = h*60;
-          if(t>=startMin && t<=endMin) ticks.push(t);
-        }
-        return ticks;
-      }, [startMin, endMin]);
-
-      const leftW = 220;
-
-      return (
-        <div className="mt-4 rounded-3xl border border-slate-100 bg-white overflow-hidden" style={{height:"calc(100vh - 280px)", minHeight:480}}>
-          <div className="h-full flex flex-col" ref={wrapRef}>
-            <div className="flex items-center justify-between px-4 py-3 border-b border-slate-100 bg-slate-50">
-              <div className="font-black text-slate-800">{dateKey} / 予約のある部屋のみ表示</div>
-              <div className="flex items-center gap-2">
-                {pages>1 ? (
-                  <div className="text-xs font-black text-slate-600">{page+1}/{pages}</div>
-                ) : null}
-                {pages>1 ? (
-                  <>
-                    <button className="px-3 py-2 rounded-2xl bg-white border border-slate-200 font-black text-slate-700" onClick={()=>setPage(p=> (p-1+pages)%pages)}>前</button>
-                    <button className="px-3 py-2 rounded-2xl bg-white border border-slate-200 font-black text-slate-700" onClick={()=>setPage(p=> (p+1)%pages)}>次</button>
-                  </>
-                ) : null}
-              </div>
+                  </div>
+                );
+              })}
             </div>
-
-            {usedRooms.length===0 ? (
-              <div className="p-6 text-sm font-bold text-slate-500">この日は予約がありません。</div>
-            ) : (
-              <div className="flex-1 overflow-hidden">
-                <div className="h-full grid" style={{gridTemplateColumns:`${leftW}px 1fr`}}>
-                  <div className="px-3 py-2 border-b border-slate-100 bg-white font-black text-slate-600">部屋</div>
-                  <div className="px-3 py-2 border-b border-slate-100 bg-white relative">
-                    <div className="relative h-8">
-                      {hourTicks.map(t => {
-                        const x = ((t-startMin)/range)*100;
-                        return (
-                          <div key={t} className="absolute top-0 bottom-0" style={{left:`${x}%`}}>
-                            <div className="w-px h-full bg-slate-200"></div>
-                            <div className="text-[10px] font-black text-slate-500 -translate-x-1/2 mt-1">{minToHHMM(t)}</div>
-                          </div>
-                        );
-                      })}
-                    </div>
-                  </div>
-
-                  {pageRooms.map(room => {
-                    const list = byRoom[room.id] || [];
-                    return (
-                      <React.Fragment key={room.id}>
-                        <div className="px-3 py-3 border-b border-slate-100 bg-white">
-                          <div className="text-xs font-black text-slate-500">{room.building}</div>
-                          <div className="font-black text-slate-800">{room.name}</div>
-                        </div>
-                        <div className="px-3 py-2 border-b border-slate-100 bg-white relative">
-                          <div className="relative h-14 rounded-2xl bg-slate-50 border border-slate-100 overflow-hidden">
-                            {hourTicks.map(t => {
-                              const x = ((t-startMin)/range)*100;
-                              return <div key={t} className="absolute top-0 bottom-0" style={{left:`${x}%`}}><div className="w-px h-full bg-slate-200"></div></div>;
-                            })}
-                            {list.map(r => {
-                              const s = Math.max(startMin, Number(r.startMin||0));
-                              const e = Math.min(endMin, Number(r.endMin||0));
-                              const left = ((s-startMin)/range)*100;
-                              const width = Math.max(1, ((e-s)/range)*100);
-                              const eqBadges = equipmentsActive
-                                .filter(e0 => Number(r?.equipment?.[e0.id]||0)>0)
-                                .slice(0,3)
-                                .map(e0 => `${e0.abbr||e0.name}${Number(r.equipment[e0.id]||0)}`)
-                                .join(" ");
-                              return (
-                                <div
-                                  key={r.id}
-                                  className="absolute top-2 bottom-2 rounded-xl bg-sky-600/90 text-white px-2 flex items-center"
-                                  style={{left:`${left}%`, width:`${width}%`}}
-                                  title={`${minToHHMM(r.startMin||0)}-${minToHHMM(r.endMin||0)} ${r.groupName}`}
-                                >
-                                  <div className="min-w-0">
-                                    <div className="text-[11px] font-black truncate">{r.groupName}</div>
-                                    <div className="text-[10px] font-black text-white/90 truncate">{minToHHMM(r.startMin||0)}–{minToHHMM(r.endMin||0)}{eqBadges ? ` / ${eqBadges}` : ""}</div>
-                                  </div>
-                                </div>
-                              );
-                            })}
-                          </div>
-                        </div>
-                      </React.Fragment>
-                    );
-                  })}
-                </div>
-              </div>
-            )}
           </div>
         </div>
       );
@@ -2305,6 +2166,8 @@ const { useEffect, useMemo, useRef, useState } = React;
       };
 
       const [showSample, setShowSample] = useState(false);
+      const [fileName, setFileName] = useState("");
+      const [showRaw, setShowRaw] = useState(false);
 
       const buildPreview = () => {
         const raw = String(importText||"").trim();
@@ -2466,19 +2329,20 @@ const { useEffect, useMemo, useRef, useState } = React;
       };
 
       const sampleText = useMemo(() => {
-        const header = templateHeaders.join("\t");
+        const header = templateHeaders.join(",");
         const room = (roomsActive && roomsActive[0]) ? roomsActive[0].name : "会議室";
-        const line1 = `${fyInfo.fy}-04-10\t09:00\t10:00\t${room}\t職員会議\t\t1`;
-        return `${header}\n${line1}`;
+        const line1 = `${fyInfo.fy}-04-10,09:00,10:00,${room},職員会議,,1`;
+        return `${header}
+${line1}`;
       }, [templateHeaders, fyInfo, roomsActive]);
 
       return (
         <div className="space-y-3">
           <div className="rounded-3xl border border-slate-100 bg-slate-50 p-4">
-            <div className="font-black text-slate-800">貼り付け形式（Excelからの貼り付け推奨）</div>
+            <div className="font-black text-slate-800">CSVファイルで年間一括インポート</div>
             <div className="text-sm font-bold text-slate-700 mt-2 space-y-1">
               <div>・1行目はヘッダー推奨：{templateHeaders.slice(0,6).join(" / ")} ...</div>
-              <div>・区切りは <strong>タブ</strong>（TSV）かカンマ（CSV）。</div>
+              <div>・形式は <strong>CSV</strong>（Excelの「CSV UTF-8」推奨）。</div>
               <div>・部屋は「名前」か「建物/名前」でもOK。</div>
               <div>・機材は列名を <strong>略称</strong> または 機材ID にすると認識します。</div>
               <div className="text-slate-500">※年度外はスキップ（警告）になります。</div>
@@ -2496,20 +2360,57 @@ const { useEffect, useMemo, useRef, useState } = React;
             </div>
             {showSample ? (
               <div className="mt-3">
-                <div className="text-xs font-black text-slate-500">コピペ用（TSV）</div>
+                <div className="text-xs font-black text-slate-500">テンプレ（CSV）</div>
                 <pre className="mt-2 text-xs font-mono bg-white border border-slate-200 rounded-2xl p-3 overflow-auto">{sampleText}</pre>
               </div>
             ) : null}
           </div>
 
-          <textarea
-            value={importText}
-            onChange={(e)=>setImportText(e.target.value)}
-            placeholder={"ここに年間分を貼り付け（TSV/CSV）"}
-            className="w-full min-h-[220px] rounded-3xl border border-slate-200 bg-white p-4 font-mono text-sm"
-            spellCheck={false}
-            disabled={!isLoggedIn || importBusy}
-          />
+          <div className="rounded-3xl border border-slate-100 bg-white p-4">
+            <div className="flex items-center justify-between gap-2 flex-wrap">
+              <div>
+                <div className="text-xs font-black text-slate-500">CSVファイルを選択</div>
+                <div className="text-sm font-bold text-slate-700 mt-1">{fileName ? fileName : '未選択'}</div>
+              </div>
+              <button className="px-4 py-2 rounded-2xl bg-white border border-slate-200 font-black text-slate-700" onClick={()=>setShowRaw(s=>!s)} type="button">
+                {showRaw ? '内容を閉じる' : '内容を確認'}
+              </button>
+            </div>
+            <div className="mt-3">
+              <input
+                type="file"
+                accept=".csv,text/csv"
+                className="w-full rounded-2xl border border-slate-200 bg-white px-3 py-2 font-bold text-slate-700"
+                disabled={importBusy}
+                onChange={(e)=>{
+                  const file = e.target.files && e.target.files[0];
+                  if(!file) return;
+                  setFileName(file.name || 'selected.csv');
+                  const reader = new FileReader();
+                  reader.onload = () => {
+                    const t = String(reader.result||'');
+                    setImportText(t);
+                    setImportPreview(null);
+                    setToast?.({ type:'ok', msg:'CSVを読み込みました（プレビュー作成を押してください）' });
+                    setTimeout(()=>setToast?.(null), 2200);
+                  };
+                  reader.onerror = () => {
+                    setToast?.({ type:'ng', msg:'CSVの読み込みに失敗しました' });
+                    setTimeout(()=>setToast?.(null), 2500);
+                  };
+                  reader.readAsText(file);
+                }}
+              />
+              <div className="text-[11px] font-bold text-slate-400 mt-2">※文字化けする場合は Excelの「CSV UTF-8」で保存してください。</div>
+            </div>
+            {showRaw && importText ? (
+              <textarea
+                value={importText}
+                readOnly
+                className="mt-3 w-full min-h-[180px] rounded-3xl border border-slate-200 bg-white p-4 font-mono text-xs"
+              />
+            ) : null}
+          </div>
 
           {importPreview ? (
             <div className="rounded-3xl border border-slate-100 bg-white p-4">
