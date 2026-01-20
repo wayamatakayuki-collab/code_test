@@ -5,21 +5,13 @@
   <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no" />
   <title>夷隅教育会館 管理（部屋予約・機材・入口モニター）</title>
 
-  <!-- Tailwind -->
   <script src="https://cdn.tailwindcss.com"></script>
-
-  <!-- React (UMD) + Babel -->
-  <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
-  <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
-  <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
-
-  <!-- Firebase (CDN / compat) -->
   <script src="https://www.gstatic.com/firebasejs/12.8.0/firebase-app-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/12.8.0/firebase-auth-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/12.8.0/firebase-firestore-compat.js"></script>
 
   <style>
-    body { -webkit-tap-highlight-color: transparent; }
+body { -webkit-tap-highlight-color: transparent; }
     .glass { backdrop-filter: blur(10px); }
 
     @media print {
@@ -38,10 +30,86 @@
 </head>
 
 <body class="bg-slate-50 text-slate-800">
+  <div id="boot" style="position:fixed;inset:0;display:flex;align-items:center;justify-content:center;background:#fff;z-index:9999;font-family:system-ui,-apple-system,Segoe UI,Roboto,Helvetica Neue,Arial,sans-serif;">
+    <div style="max-width:720px;padding:24px;">
+      <div style="font-weight:800;font-size:18px;margin-bottom:8px;">読み込み中…</div>
+      <div id="bootMsg" style="color:#334155;font-size:14px;line-height:1.6;">必要なライブラリを読み込んでいます。</div>
+      <pre id="bootErr" style="display:none;margin-top:12px;white-space:pre-wrap;background:#0f172a;color:#e2e8f0;padding:12px;border-radius:12px;overflow:auto;max-height:45vh;"></pre>
+      <div style="margin-top:10px;color:#64748b;font-size:12px;">※ここにエラーが表示された場合、その内容をそのまま送ってください。</div>
+    </div>
+  </div>
   <div id="app"></div>
 
-  <script type="text/babel">
-    const { useEffect, useMemo, useRef, useState } = React;
+  <script>
+
+  (function(){
+    const boot = document.getElementById("boot");
+    const msg = document.getElementById("bootMsg");
+    const errBox = document.getElementById("bootErr");
+    const setMsg = (t)=>{ try{ msg.textContent = t; }catch(e){} };
+    const showErr = (e)=>{
+      try{
+        errBox.style.display = "block";
+        errBox.textContent = String(e && (e.stack || e.message) || e);
+        setMsg("起動に失敗しました。下のエラー内容をご確認ください。");
+      }catch(_){ }
+    };
+    window.addEventListener("error", (ev)=>{ showErr(ev.error || ev.message); });
+    window.addEventListener("unhandledrejection", (ev)=>{ showErr(ev.reason); });
+
+    function loadScript(url){
+      return new Promise((resolve, reject)=>{
+        const s = document.createElement("script");
+        s.src = url;
+        s.async = true;
+        s.crossOrigin = "anonymous";
+        s.onload = ()=>resolve(url);
+        s.onerror = ()=>reject(new Error("Failed to load: " + url));
+        document.head.appendChild(s);
+      });
+    }
+
+    async function loadWithFallback(name, primary, fallback){
+      setMsg(name + " を読み込み中…");
+      try{
+        return await loadScript(primary);
+      }catch(e1){
+        try{
+          return await loadScript(fallback);
+        }catch(e2){
+          throw new Error(name + " の読み込みに失敗しました。\n" + e1.message + "\n" + e2.message);
+        }
+      }
+    }
+
+    async function bootApp(){
+      try{
+        await loadWithFallback("React", "https://unpkg.com/react@18/umd/react.production.min.js", "https://cdn.jsdelivr.net/npm/react@18/umd/react.production.min.js");
+        await loadWithFallback("ReactDOM", "https://unpkg.com/react-dom@18/umd/react-dom.production.min.js", "https://cdn.jsdelivr.net/npm/react-dom@18/umd/react-dom.production.min.js");
+        await loadWithFallback("Babel", "https://unpkg.com/@babel/standalone/babel.min.js", "https://cdn.jsdelivr.net/npm/@babel/standalone/babel.min.js");
+
+        if(!window.React || !window.ReactDOM || !window.Babel){
+          throw new Error("必要なライブラリが読み込めませんでした（React/ReactDOM/Babel）。");
+        }
+
+        setMsg("アプリを起動しています…");
+        const src = document.getElementById("appCode").textContent;
+        const transformed = window.Babel.transform(src, { presets: ["react"] }).code;
+        (new Function(transformed))();
+        // Hide boot overlay
+        boot.style.display = "none";
+      }catch(e){
+        showErr(e);
+      }
+    }
+
+    bootApp();
+  })();
+
+  </script>
+
+  <script id="appCode" type="text/plain">
+const { useEffect, useMemo, useRef, useState } = React;
 
     /**********************
      * 固定設定
