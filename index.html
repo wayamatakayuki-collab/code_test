@@ -1285,7 +1285,7 @@ async function deleteAllReservations(){
               <TabButton active={tab==="monitor"} onClick={()=>{ setTab("monitor"); setMonitorDate(todayKeyLocal()); }}>掲示板</TabButton>
               <TabButton active={tab==="day"} onClick={()=>setTab("day")}>日予定</TabButton>
               <TabButton active={tab==="week"} onClick={()=>{ setTab("week"); }}>週予定</TabButton>
-              <TabButton active={tab==="month"} onClick={()=>{ setMonthCursor(monthKeyFromDateKey(selectedDate)); setTab("month"); }}>月</TabButton>
+              <TabButton active={tab==="month"} onClick={()=>{ setMonthCursor(monthKeyFromDateKey(selectedDate)); setTab("month"); }}>月予定</TabButton>
               <TabButton active={tab==="year"} onClick={()=>{ setTab("year"); }}>年間予定</TabButton>
               <TabButton active={tab==="equip"} onClick={()=>setTab("equip")}>機材管理</TabButton>
               <TabButton active={tab==="rooms"} onClick={()=>setTab("rooms")}>部屋マスタ</TabButton>
